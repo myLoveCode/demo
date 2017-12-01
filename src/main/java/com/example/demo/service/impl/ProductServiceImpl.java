@@ -25,7 +25,7 @@ import com.example.demo.service.ProductService;
 import com.example.demo.vo.ProductQuery;
 
 @Service
-@Transactional
+@Transactional(readOnly = true)
 public class ProductServiceImpl implements ProductService {
 	private static final Logger logger = LoggerFactory.getLogger(ProductServiceImpl.class);
 
@@ -33,16 +33,19 @@ public class ProductServiceImpl implements ProductService {
 	private ProductDao productDao;
 
 	@Override
+	@Transactional(readOnly = false)
 	public Product save(Product product) {
 		return productDao.save(product);
 	}
 
 	@Override
+	@Transactional(readOnly = false)
 	public void delete(Long id) {
 		productDao.delete(id);
 	}
 
 	@Override
+	@Transactional(readOnly = false)
 	public Product findOne(Long id) {
 		return productDao.findOne(id);
 	}
@@ -56,7 +59,7 @@ public class ProductServiceImpl implements ProductService {
 			public Predicate toPredicate(Root<Product> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) {
 				List<Predicate> list = new ArrayList<Predicate>();
 				if (null != conditon.getCustomer() && !"".equals(conditon.getCustomer())) {
-					list.add(criteriaBuilder.equal(root.get("customer").as(String.class), conditon.getCustomer()));
+					list.add(criteriaBuilder.equal(root.get("customer").as(String.class), conditon.getCustomer())); //TODO:如果是模糊查询呢？
 				}
 				if (null != conditon.getDemandType() && !"".equals(conditon.getDemandType())) {
 					list.add(criteriaBuilder.equal(root.get("demandType").as(String.class), conditon.getDemandType()));

@@ -2,15 +2,20 @@ package com.example.demo.dao;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.example.demo.entity.Product;
 
-public interface ProductDao extends JpaRepository<Product, Long>,JpaSpecificationExecutor<Product> {
+public interface ProductDao extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
 
 	/**
-	 * 根据customer + model + airportCode 查询工厂地址，
-	 * TODO:这个方法名这么长。。。我也是醉了。   还不如直接写SQL 
-	 * @return
+	 * 根据customer + model + airportCode 查询工厂地址
+	 * 
+	 * @return location
 	 */
-	String findLocationTop1ByCustomerAndExternalRackNameAndclusterAndLocationNotNull();
+	@Query(value = "SELECT p.location FROM person p where p.customer = :customer and p.externalRackName = :externalRackName "
+			+ "and p.cluster = :cluster and p.location is not null limit 1", nativeQuery = true)
+	String getLocation(@Param("customer") String customer, @Param("externalRackName") String externalRackName,
+			@Param("cluster") String cluster);
 }

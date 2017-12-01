@@ -13,9 +13,9 @@ public interface DemoDao extends JpaRepository<Demo, Long> {
 
 	Demo findByNameAndAddress(String name, String address);
 
-	@Query("select p from Person p where p.name=:name and p.address=:address")
+	@Query("select p from Demo p where p.name=:name and p.address=:address")
 	Demo withNameAndAddressQuery(@Param("name") String name, @Param("address") String address);
 
-	@Query(value = "select * from person p where p.name=:name and p.address=:address", nativeQuery = true)
+	@Query(value = "select * from demo p where p.name=:name and p.address=:address", nativeQuery = true)
 	Demo withNameAndAddressNamedQuery(@Param("name") String name, @Param("address") String address);
 }

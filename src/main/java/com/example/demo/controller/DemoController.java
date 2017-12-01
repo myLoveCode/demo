@@ -1,5 +1,7 @@
 package com.example.demo.controller;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import javax.annotation.Resource;
@@ -8,6 +10,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dao.DemoDao;
@@ -65,6 +69,16 @@ public class DemoController {
 	@RequestMapping("/all")
 	public List<Demo> all() {
 		return personRepository.findAll();
+	}
+
+	@RequestMapping(value = "/date", method = RequestMethod.POST)
+	public void processDate(@RequestParam("date") LocalDate date) {
+		System.out.println(date);
+	}
+
+	@RequestMapping(value = "/datetime", method = RequestMethod.POST)
+	public void processDateTime(@RequestParam("datetime") LocalDateTime dateAndTime) {
+		System.out.println(dateAndTime);
 	}
 
 }
