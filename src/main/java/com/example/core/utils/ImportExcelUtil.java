@@ -46,6 +46,9 @@ public class ImportExcelUtil {
 		if (null == work) {
 			throw new Exception("创建Excel工作薄为空！");
 		}
+//		if(null == mapping) {
+//			mapping = new HashMap<>();
+//		}
 		Sheet sheet = null;
 		Row row = null;
 		Cell cell = null;
@@ -63,10 +66,12 @@ public class ImportExcelUtil {
 			String title[] = null;
 			if (row != null) {
 				title = new String[row.getLastCellNum()];
-
 				for (int y = row.getFirstCellNum(); y < row.getLastCellNum(); y++) {
 					cell = row.getCell(y);
 					title[y] = (String) getCellValue(cell);
+//					if(null == mapping.get(title[y])) {
+//						mapping.put(title[y], title[y]);
+//					}
 				}
 
 			} else
@@ -149,6 +154,10 @@ public class ImportExcelUtil {
 			break;
 		}
 		return value;
+	}
+	
+	public static List<Map<String, Object>> parseExcel(FileInputStream data, String fileName) throws Exception{
+		return parseExcel(data, fileName,null);
 	}
 
 	public static void main(String[] args) throws Exception {

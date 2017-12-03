@@ -1,5 +1,11 @@
 package com.example.demo.entity;
 
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
@@ -12,6 +18,18 @@ public class Demo {
 	private String name;
 	private Integer age;
 	private String address;
+
+	public static void main(String[] args) {
+		LinkedHashMap<String, String> map = null;
+		List<String> list = Arrays.asList("gao", "tian", "yue", "yue");
+		map = list.stream().distinct().collect(Collectors.toMap(a -> null, Function.identity(), (a, b) -> {
+			return a + b;
+		}, LinkedHashMap::new));
+		System.out.println(map);
+		System.out.println("-------------");
+		map.put(null, null);
+		System.out.println(map);
+	}
 
 	public Demo() {
 	}

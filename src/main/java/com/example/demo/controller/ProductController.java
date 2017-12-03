@@ -1,6 +1,11 @@
 package com.example.demo.controller;
 
+import java.io.FileInputStream;
+import java.util.Map;
+
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +19,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.alibaba.fastjson.JSON;
 import com.example.core.mode.ResponseJson;
+import com.example.core.utils.ImportUtil;
 import com.example.demo.entity.Product;
 import com.example.demo.service.ProductService;
 import com.example.demo.vo.ProductQuery;
@@ -82,6 +88,16 @@ public class ProductController {
 		return ResponseJson.createResponse(person);
 	}
 	
+	@RequestMapping(value = "/product/import", method = RequestMethod.POST)
+	@ResponseBody
+	public ResponseJson<Boolean> importStations(HttpServletRequest request, HttpServletResponse response) {
+		Map<String, Object> fileData = ImportUtil.upload(request);
+
+		FileInputStream fis = (FileInputStream) fileData.get("fis");
+		String fileName = (String) fileData.get("fileName");
+		productService.importProduct(fis, fileName);
+		return ResponseJson.createResponse(true);
+	}
 	
 	
 }

@@ -1,5 +1,7 @@
 package com.example.demo.service;
 
+import java.io.FileInputStream;
+
 import org.springframework.data.domain.Page;
 
 import com.example.demo.entity.Product;
@@ -39,5 +41,7 @@ public interface ProductService {
 	 * @return
 	 */
 	Page<Product> findByCriteria(int page, int size, ProductQuery e);
+
+	void importProduct(FileInputStream fis, String fileName);
 
 }

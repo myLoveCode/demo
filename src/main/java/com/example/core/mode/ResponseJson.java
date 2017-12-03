@@ -10,26 +10,10 @@ public class ResponseJson<T> implements Serializable {
 	private static final long serialVersionUID = 472122891140741274L;
 
 	private String code;
-	
+
 	private String msg;
 
 	private T data;
-
-
-	public static void main(String[] args) {
-		Demo d = new Demo();
-		d.setAddress("address");
-		d.setAge(11);
-
-		ResponseJson<Demo> s = ResponseJson.createResponse(d);
-		System.out.println(JSON.toJSONString(s));
-
-		ResponseJson<Boolean> s1 = new ResponseJson<>(Boolean.TRUE);
-		System.out.println(JSON.toJSONString(s1));
-
-		ResponseJson s2 = new ResponseJson("errorCode","errorMsg");
-		System.out.println(JSON.toJSONString(s2));
-	}
 
 	public ResponseJson() {
 		super();
@@ -74,5 +58,18 @@ public class ResponseJson<T> implements Serializable {
 		this.data = data;
 	}
 
-	
+	public static void main(String[] args) {
+		Demo d = new Demo();
+		d.setAddress("address");
+		d.setAge(11);
+
+		ResponseJson<Demo> s = ResponseJson.createResponse(d);
+		System.out.println(JSON.toJSONString(s));
+
+		ResponseJson<Boolean> s1 = new ResponseJson<>(Boolean.TRUE);
+		System.out.println(JSON.toJSONString(s1));
+
+		ResponseJson s2 = new ResponseJson("errorCode", "errorMsg");
+		System.out.println(JSON.toJSONString(s2));
+	}
 }
