@@ -1,15 +1,15 @@
-package com.example.demo.converter;
+package com.example.core.converter;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 import org.springframework.core.convert.converter.Converter;
 
-public final class LocalDateTimeConverter implements Converter<String, LocalDate> {
+public final class LocalDateConverter implements Converter<String, LocalDate> {
 
 	private final DateTimeFormatter formatter;
 
-	public LocalDateTimeConverter(String dateFormat) {
+	public LocalDateConverter(String dateFormat) {
 		this.formatter = DateTimeFormatter.ofPattern(dateFormat);
 	}
 

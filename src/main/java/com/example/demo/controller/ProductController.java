@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.alibaba.fastjson.JSON;
+import com.example.core.mode.ResponseJson;
 import com.example.demo.entity.Product;
 import com.example.demo.service.ProductService;
 import com.example.demo.vo.ProductQuery;
@@ -26,7 +27,7 @@ public class ProductController {
 
 	@RequestMapping(value = "/product", method = RequestMethod.POST)
 	@ResponseBody
-	public Product add(Product product) {
+	public ResponseJson<Product> add(Product product) {
 		if (null == product || null == product.getDemandType() || null == product.getExternalRackName()
 				|| null == product.getCluster() || null == product.getIpn() || null == product.getNeedByDate()) { 
 
@@ -36,21 +37,21 @@ public class ProductController {
 
 		logger.info("product:{}", JSON.toJSONString(product));
 		Product person = productService.save(product);
-		return person;
+		return ResponseJson.createResponse(person);
 	}
 
 	@RequestMapping(value = "/product/{id}", method = RequestMethod.DELETE)
 	@ResponseBody
-	public void del(@PathVariable Long id) {
+	public ResponseJson<Boolean> del(@PathVariable Long id) {
 		logger.info("id:{}", id);
 		productService.delete(id);
 		
-//		return person;
+		return ResponseJson.createResponse(Boolean.TRUE);
 	}
 	
 	@RequestMapping(value = "/product", method = RequestMethod.PUT)
 	@ResponseBody
-	public Product edit(Product product) {
+	public ResponseJson<Product> edit(Product product) {
 		if (null == product || null == product.getId() || null == product.getDemandType() || null == product.getExternalRackName()
 				|| null == product.getCluster() || null == product.getIpn() || null == product.getNeedByDate()) {
 
@@ -60,30 +61,25 @@ public class ProductController {
 
 		logger.info("product:{}", JSON.toJSONString(product));
 		Product person = productService.save(product);
-		return person;
+		return ResponseJson.createResponse(person);
 	}
 
 	@RequestMapping(value = "/product/{id}", method = RequestMethod.GET)
 	@ResponseBody
-	public Product get(@PathVariable Long id) {
+	public ResponseJson<Product> get(@PathVariable Long id) {
 		logger.info("id:{}",id);
 		Product person = productService.findOne(id);
-		return person;
+		return ResponseJson.createResponse(person);
 	}
 	
-	/**
-	 * TODO:cq...条件,分页
-	 * @param id
-	 * @return
-	 */
 	@RequestMapping(value = "/product", method = RequestMethod.GET)
 	@ResponseBody
-	public Page<Product> page(ProductQuery product, @RequestParam(value="page", defaultValue="0") int page,
+	public ResponseJson<Page<Product>> page(ProductQuery product, @RequestParam(value="page", defaultValue="0") int page,
 			@RequestParam(value="size", defaultValue="20") int size) {
 		logger.info("product:{}", JSON.toJSONString(product));
-		page = 0; //TODO:这就是坑货，没有打印sql的入参和返回数据。
+		page = 0; //TODO:这就是坑货，没有打印sql的入参和返回数据。  还没测试翻页
 		Page<Product> person = productService.findByCriteria(page, size, product);
-		return person;
+		return ResponseJson.createResponse(person);
 	}
 	
 	
