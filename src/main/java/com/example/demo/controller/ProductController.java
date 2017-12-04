@@ -10,21 +10,23 @@ import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.alibaba.fastjson.JSON;
+import com.example.core.exception.InvalidRequestException;
 import com.example.core.mode.ResponseJson;
 import com.example.core.utils.ImportUtil;
 import com.example.demo.entity.Product;
 import com.example.demo.service.ProductService;
 import com.example.demo.vo.ProductQuery;
 
-@Controller
+@RestController
+@RequestMapping(value="/api/" , consumes = "application/json")
 public class ProductController {
 	private static final Logger logger = LoggerFactory.getLogger(ProductController.class);
 
@@ -32,13 +34,10 @@ public class ProductController {
 	private ProductService productService;
 
 	@RequestMapping(value = "/product", method = RequestMethod.POST)
-	@ResponseBody
-	public ResponseJson<Product> add(Product product) {
+	public ResponseJson<Product> add(@RequestBody Product product) {
 		if (null == product || null == product.getDemandType() || null == product.getExternalRackName()
-				|| null == product.getCluster() || null == product.getIpn() || null == product.getNeedByDate()) { 
-
-			return null;
-			// throw new Exception("非法参数"); //TODO:cq...Excption
+				|| null == product.getCluster() || null == product.getIpn() || null == product.getNeedByDate()) {
+			throw new InvalidRequestException("需求类型，产品名称，机场编码，编号，到货日期不能为空");
 		}
 
 		logger.info("product:{}", JSON.toJSONString(product));
@@ -47,22 +46,18 @@ public class ProductController {
 	}
 
 	@RequestMapping(value = "/product/{id}", method = RequestMethod.DELETE)
-	@ResponseBody
 	public ResponseJson<Boolean> del(@PathVariable Long id) {
 		logger.info("id:{}", id);
 		productService.delete(id);
-		
 		return ResponseJson.createResponse(Boolean.TRUE);
 	}
-	
-	@RequestMapping(value = "/product", method = RequestMethod.PUT)
-	@ResponseBody
-	public ResponseJson<Product> edit(Product product) {
-		if (null == product || null == product.getId() || null == product.getDemandType() || null == product.getExternalRackName()
-				|| null == product.getCluster() || null == product.getIpn() || null == product.getNeedByDate()) {
 
-			return null;
-			// throw new Exception("非法参数"); //TODO:cq...Excption
+	@RequestMapping(value = "/product", method = RequestMethod.PUT)
+	public ResponseJson<Product> edit(@RequestBody Product product) {
+		if (null == product || null == product.getId() || null == product.getDemandType()
+				|| null == product.getExternalRackName() || null == product.getCluster() || null == product.getIpn()
+				|| null == product.getNeedByDate()) {
+			throw new InvalidRequestException("需求类型，产品名称，机场编码，编号，到货日期不能为空");
 		}
 
 		logger.info("product:{}", JSON.toJSONString(product));
@@ -71,33 +66,30 @@ public class ProductController {
 	}
 
 	@RequestMapping(value = "/product/{id}", method = RequestMethod.GET)
-	@ResponseBody
 	public ResponseJson<Product> get(@PathVariable Long id) {
-		logger.info("id:{}",id);
+		logger.info("id:{}", id);
 		Product person = productService.findOne(id);
 		return ResponseJson.createResponse(person);
 	}
-	
+
 	@RequestMapping(value = "/product", method = RequestMethod.GET)
-	@ResponseBody
-	public ResponseJson<Page<Product>> page(ProductQuery product, @RequestParam(value="page", defaultValue="0") int page,
-			@RequestParam(value="size", defaultValue="20") int size) {
+	public ResponseJson<Page<Product>> page(ProductQuery product,
+			@RequestParam(value = "page", defaultValue = "0") int page,
+			@RequestParam(value = "size", defaultValue = "20") int size) {
 		logger.info("product:{}", JSON.toJSONString(product));
-		page = 0; //TODO:这就是坑货，没有打印sql的入参和返回数据。  还没测试翻页
+		// page = 0; //TODO:这就是坑货，没有打印sql的入参和返回数据。 还没测试翻页
 		Page<Product> person = productService.findByCriteria(page, size, product);
 		return ResponseJson.createResponse(person);
 	}
-	
-	@RequestMapping(value = "/product/import", method = RequestMethod.POST)
-	@ResponseBody
-	public ResponseJson<Boolean> importStations(HttpServletRequest request, HttpServletResponse response) {
-		Map<String, Object> fileData = ImportUtil.upload(request);
 
-		FileInputStream fis = (FileInputStream) fileData.get("fis");
-		String fileName = (String) fileData.get("fileName");
-		productService.importProduct(fis, fileName);
-		return ResponseJson.createResponse(true);
-	}
-	
-	
+//	@RequestMapping(value = "/product/import", method = RequestMethod.POST)
+//	public ResponseJson<Map<Integer, String>> importStations(HttpServletRequest request, HttpServletResponse response) {
+//		Map<String, Object> fileData = ImportUtil.upload(request);
+//
+//		FileInputStream fis = (FileInputStream) fileData.get("fis");
+//		String fileName = (String) fileData.get("fileName");
+//		Map<Integer, String> errorMsg = productService.importProduct(fis, fileName);
+//		return ResponseJson.createResponse(errorMsg);
+//	}
+
 }

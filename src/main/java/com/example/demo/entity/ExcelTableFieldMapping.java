@@ -2,15 +2,22 @@ package com.example.demo.entity;
 
 import java.io.Serializable;
 
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
 /**
  * 
  * excel列头 和 表字段对应关系
  *
  */
+@Entity
 public class ExcelTableFieldMapping implements Serializable {
 
 	private static final long serialVersionUID = -475254150861172103L;
 
+	@Id
+	@GeneratedValue
 	private Long id;
 	private String customer;
 	private String excelTile; //Excel列头

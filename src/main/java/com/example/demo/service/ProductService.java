@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import java.io.FileInputStream;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 
@@ -42,6 +43,6 @@ public interface ProductService {
 	 */
 	Page<Product> findByCriteria(int page, int size, ProductQuery e);
 
-	void importProduct(FileInputStream fis, String fileName);
+	Map<Integer,String> importProduct(FileInputStream fis, String fileName);
 
 }

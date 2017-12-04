@@ -18,4 +18,28 @@ public interface ProductDao extends JpaRepository<Product, Long>, JpaSpecificati
 			+ "and p.cluster = :cluster and p.location is not null limit 1", nativeQuery = true)
 	String getLocation(@Param("customer") String customer, @Param("externalRackName") String externalRackName,
 			@Param("cluster") String cluster);
+	
+	/**
+	 * 迁移老数据到历史表中
+	 * @param customer
+	 */
+	@Query(value=" INSERT INTO product_history (" + 
+			"	region,cluster,cluster1,customer,date_stamp,delivery_window_start,demand_type,external_rack_name,ipn,location,need_by_date,need_by_date_old,quantity,shipping_region,sunday,test_rack,type,upload_time,vendor" + 
+			" ) SELECT" + 
+			"	region,cluster,cluster1,customer,date_stamp,delivery_window_start,demand_type,external_rack_name,ipn,location,need_by_date,need_by_date_old,quantity,shipping_region,sunday,test_rack,type,upload_time,vendor" + 
+			" FROM" + 
+			"	product" + 
+			" WHERE" + 
+			" 	customer = :customer",
+			nativeQuery = true )
+	void moveToProductHistory(@Param("customer") String customer);
+	
+	/**
+	 * 删除老数据
+	 * @param customer
+	 */
+	void deleteByCustomer(String customer);
+	
+	
+	
 }

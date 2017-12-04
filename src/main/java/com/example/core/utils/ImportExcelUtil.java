@@ -126,11 +126,14 @@ public class ImportExcelUtil {
 	 */
 	@SuppressWarnings("deprecation")
 	public static Object getCellValue(Cell cell) {
+		if(cell == null) {
+			return null;
+		}
 		Object value = null;
 		DecimalFormat df = new DecimalFormat("0"); // 格式化number String字符
-		SimpleDateFormat sdf = new SimpleDateFormat("yyy-MM-dd"); // 日期格式化
+		SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy"); // 日期格式化
 		DecimalFormat df2 = new DecimalFormat("0"); // 格式化数字
-
+		
 		switch (cell.getCellType()) {
 		case Cell.CELL_TYPE_STRING:
 			value = cell.getRichStringCellValue().getString();
@@ -138,7 +141,7 @@ public class ImportExcelUtil {
 		case Cell.CELL_TYPE_NUMERIC:
 			if ("General".equals(cell.getCellStyle().getDataFormatString())) {
 				value = df.format(cell.getNumericCellValue());
-			} else if ("m/d/yy".equals(cell.getCellStyle().getDataFormatString())) {
+			} else if ("m/d/yyyy;@".equals(cell.getCellStyle().getDataFormatString())) {
 				value = sdf.format(cell.getDateCellValue());
 			} else {
 				value = df2.format(cell.getNumericCellValue());
