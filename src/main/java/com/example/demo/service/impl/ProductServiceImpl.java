@@ -23,6 +23,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StopWatch;
 import org.springframework.util.StringUtils;
 
 import com.alibaba.fastjson.JSON;
@@ -97,16 +98,25 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	@Transactional(readOnly = false)
 	public Map<Integer,String> importProduct(FileInputStream fis, String fileName) {
+		StopWatch clock = new StopWatch();  
+		clock.start("excelTableFieldMappings");
 		// TODO:cq...0.查询该客户的所有Excel自定义列头对应的表字段
 		List<ExcelTableFieldMapping> excelTableFieldMappings = excelTableFieldMappingDao.findByCustomer(fileName);
+		clock.stop();
 		// ... List<ExcelTableFieldMapping> 2 map 传到 parseExcel方法中map
+		
+		clock.start("parseExcelMappin");
 		Map<String, String> parseExcelMappin = excelTableFieldMappings.stream()
 				.collect(Collectors.toMap(ExcelTableFieldMapping::getExcelTile, ExcelTableFieldMapping::getTableField));
+		clock.stop();
 		
+		clock.start("validateExcelMapping");
 		Map<String, ExcelTableFieldMapping> validateExcelMapping = excelTableFieldMappings.stream()
 				.filter(e->e.getFieldNotNull())
 				.collect(Collectors.toMap(ExcelTableFieldMapping::getTableField, k->(k)));
+		clock.stop();
 
+		clock.start("parseExcel");
 		// 1.文件解析
 		List<Map<String, Object>> excelDataList = null;
 		try {
@@ -116,24 +126,31 @@ public class ProductServiceImpl implements ProductService {
 			logger.error(e.getMessage(), e);
 			throw new BusinessException("文件解析失败");
 		}
-
+		clock.stop();
+		
+		clock.start("validateExcelCell");
 		// 2.文件校验
 		// 哪些字段是不能为空 等
 		Map<Integer, String> excelErrorMsg = validateExcelCell(validateExcelMapping, excelDataList);
-		
+		clock.stop();
 		if(excelErrorMsg.size()>0) {
 			return excelErrorMsg;
 		}
 		
+		clock.start("handleExcelCell");
 		//3.merge 相同类型产品，对数量进行相加
 		//TODO：cq...3.1 保存文件时得判断文件是否已经存在？如果存在，那么是否会进行覆盖呢？
 		List<Product> insertExcelDataList = handleExcelCell(excelDataList,fileName); //要插入数据库的数据
+		clock.stop();
 		
+		clock.start("DBoperation");
 		//4.老数据迁移到历史日志表，并批量插入新数据
         String customer = fileName; //一个文件对应一个customer，这里做简单模拟。文件名就是客户公司名称
         productDao.moveToProductHistory(customer);
         productDao.deleteByCustomer(customer);
         productDao.save(insertExcelDataList); //好假。。。竟然是一条一条的保存。
+        clock.stop();
+        logger.info(clock.prettyPrint());
         
         return null;
 	}
