@@ -3,6 +3,7 @@ package com.example.demo.service.impl;
 import java.io.FileInputStream;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StopWatch;
 import org.springframework.util.StringUtils;
 
 import com.alibaba.fastjson.JSON;
@@ -88,6 +90,19 @@ public class ProductServiceImpl implements ProductService {
 				return criteriaBuilder.and(list.toArray(p));
 			}
 		}, pageable);
+		
+		for(int i=0; i<bookPage.getContent().size(); i++) {
+			Product product = bookPage.getContent().get(i);
+			if(null == product.getLocation()) {
+				String customer = product.getCustomer();
+				String externalRackName = product.getExternalRackName();
+				String cluster = product.getCluster();
+				if( null!=customer && null!=externalRackName && null!=cluster ) {
+					String location = productDao.getLocation(customer, externalRackName, cluster);
+					bookPage.getContent().get(i).setLocation(location);
+				}
+			}
+		}
 		return bookPage;
 	}
 
@@ -97,16 +112,26 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	@Transactional(readOnly = false)
 	public Map<Integer,String> importProduct(FileInputStream fis, String fileName) {
+		logger.info("导入Excel");
+        StopWatch clock = new StopWatch();
+        clock.start("excelTableFieldMappings");
 		// TODO:cq...0.查询该客户的所有Excel自定义列头对应的表字段
 		List<ExcelTableFieldMapping> excelTableFieldMappings = excelTableFieldMappingDao.findByCustomer(fileName);
+		clock.stop();
+		
+		clock.start("parseExcelMappin");
 		// ... List<ExcelTableFieldMapping> 2 map 传到 parseExcel方法中map
 		Map<String, String> parseExcelMappin = excelTableFieldMappings.stream()
 				.collect(Collectors.toMap(ExcelTableFieldMapping::getExcelTile, ExcelTableFieldMapping::getTableField));
+		clock.stop();
 		
+		clock.start("validateExcelMapping");
 		Map<String, ExcelTableFieldMapping> validateExcelMapping = excelTableFieldMappings.stream()
 				.filter(e->e.getFieldNotNull())
 				.collect(Collectors.toMap(ExcelTableFieldMapping::getTableField, k->(k)));
-
+		clock.stop();
+		
+		clock.start("parseExcel");
 		// 1.文件解析
 		List<Map<String, Object>> excelDataList = null;
 		try {
@@ -116,24 +141,34 @@ public class ProductServiceImpl implements ProductService {
 			logger.error(e.getMessage(), e);
 			throw new BusinessException("文件解析失败");
 		}
-
+		clock.stop();
+		
+		clock.start("validateExcelCell");
 		// 2.文件校验
 		// 哪些字段是不能为空 等
 		Map<Integer, String> excelErrorMsg = validateExcelCell(validateExcelMapping, excelDataList);
+		clock.stop();
 		
 		if(excelErrorMsg.size()>0) {
 			return excelErrorMsg;
 		}
 		
+		clock.start("handleExcelCell");
 		//3.merge 相同类型产品，对数量进行相加
 		//TODO：cq...3.1 保存文件时得判断文件是否已经存在？如果存在，那么是否会进行覆盖呢？
 		List<Product> insertExcelDataList = handleExcelCell(excelDataList,fileName); //要插入数据库的数据
+		clock.stop();
 		
+		clock.start("DBoperration");
 		//4.老数据迁移到历史日志表，并批量插入新数据
         String customer = fileName; //一个文件对应一个customer，这里做简单模拟。文件名就是客户公司名称
         productDao.moveToProductHistory(customer);
         productDao.deleteByCustomer(customer);
         productDao.save(insertExcelDataList); //好假。。。竟然是一条一条的保存。
+        clock.stop();
+        logger.info("导入Excel任务全部执行结束");
+        logger.info(clock.prettyPrint());
+        logger.info("共耗费秒数={}" , clock.getTotalTimeSeconds());
         
         return null;
 	}
@@ -145,29 +180,35 @@ public class ProductServiceImpl implements ProductService {
 	 * @return
 	 */
 	private List<Product> handleExcelCell(List<Map<String, Object>> excelDataList, String customer) {
+		Timestamp uploadTime = new Timestamp(System.currentTimeMillis());
 		List<Product> insertExcelDataList = new ArrayList<>(); //要插入数据库的数据
         for (int i = 0; i < excelDataList.size(); i++) {  
         	Map<String, Object> excelData = excelDataList.get(i);  
-        	String unique = ""+excelData.get("demandType")+excelData.get("externalRackName")+excelData.get("cluster")+excelData.get("needByDate");
+        	Date dateFormat = DateUtil.getDateFormat((String)excelData.get("needByDate"));
+			String unique = ""+excelData.get("demandType")+excelData.get("externalRackName")+excelData.get("cluster")
+        				  + DateUtil.getDateFormat(dateFormat);
         	Integer quantity = Integer.parseInt(""+excelData.get("quantity"));
         	
-        	if(0 == insertExcelDataList.size()) {
+        	int size = insertExcelDataList.size();
+			
+			if(0 == size) {
         		try {
 					Product map2Bean = BeanMapChangeUtil.toBean(excelData, Product.class);
 					String needByDate = (String)excelData.get("needByDate");
 					map2Bean.setSunday(DateUtil.getFirstDayOfWeek(needByDate) );
 					
 					map2Bean.setCustomer(customer);
-					map2Bean.setUploadTime(new Timestamp(System.currentTimeMillis()));
+					map2Bean.setUploadTime(uploadTime);
 					insertExcelDataList.add(map2Bean);
 				} catch (Exception e1) {
 					logger.error(e1.getMessage(),e1);
 				}
         	}else {
-        		for(int j=0; j<insertExcelDataList.size(); j++) {
+        		int count=0;
+        		for(int j=0; j<size; j++) {
             		Product insertExcelData = insertExcelDataList.get(j); 
             		String distinct = insertExcelData.getDemandType()+insertExcelData.getExternalRackName()
-            						+ insertExcelData.getCluster()+insertExcelData.getNeedByDate();
+            						+ insertExcelData.getCluster()+ DateUtil.getDateFormat( insertExcelData.getNeedByDate() );
             		
             		if(!unique.equals(distinct)) {
     					try {
@@ -176,8 +217,11 @@ public class ProductServiceImpl implements ProductService {
     						map2Bean.setSunday(DateUtil.getFirstDayOfWeek(needByDate) );
     						
     						map2Bean.setCustomer(customer);
-    						map2Bean.setUploadTime(new Timestamp(System.currentTimeMillis()));
-    						insertExcelDataList.add(map2Bean);
+    						map2Bean.setUploadTime(uploadTime);
+    						count++;
+    						if(count == size) {
+    							insertExcelDataList.add(map2Bean);
+    						}
     					} catch (Exception e1) {
     						logger.error(e1.getMessage(),e1);
     					}

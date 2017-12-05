@@ -2,6 +2,7 @@ package com.example.demo.dao;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,7 +15,7 @@ public interface ProductDao extends JpaRepository<Product, Long>, JpaSpecificati
 	 * 
 	 * @return location
 	 */
-	@Query(value = "SELECT p.location FROM person p where p.customer = :customer and p.externalRackName = :externalRackName "
+	@Query(value = "SELECT p.location FROM product p where p.customer = :customer and p.external_rack_name = :externalRackName "
 			+ "and p.cluster = :cluster and p.location is not null limit 1", nativeQuery = true)
 	String getLocation(@Param("customer") String customer, @Param("externalRackName") String externalRackName,
 			@Param("cluster") String cluster);
@@ -31,7 +32,8 @@ public interface ProductDao extends JpaRepository<Product, Long>, JpaSpecificati
 			"	product" + 
 			" WHERE" + 
 			" 	customer = :customer",
-			nativeQuery = true )
+			nativeQuery = true)
+	@Modifying
 	void moveToProductHistory(@Param("customer") String customer);
 	
 	/**

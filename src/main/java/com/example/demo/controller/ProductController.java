@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import java.io.FileInputStream;
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.annotation.Resource;
@@ -26,14 +27,14 @@ import com.example.demo.service.ProductService;
 import com.example.demo.vo.ProductQuery;
 
 @RestController
-@RequestMapping(value="/api/" , consumes = "application/json")
+@RequestMapping(value="/api/")
 public class ProductController {
 	private static final Logger logger = LoggerFactory.getLogger(ProductController.class);
 
 	@Resource
 	private ProductService productService;
 
-	@RequestMapping(value = "/product", method = RequestMethod.POST)
+	@RequestMapping(value = "/product", method = RequestMethod.POST, consumes = "application/json")
 	public ResponseJson<Product> add(@RequestBody Product product) {
 		if (null == product || null == product.getDemandType() || null == product.getExternalRackName()
 				|| null == product.getCluster() || null == product.getIpn() || null == product.getNeedByDate()) {
@@ -52,7 +53,7 @@ public class ProductController {
 		return ResponseJson.createResponse(Boolean.TRUE);
 	}
 
-	@RequestMapping(value = "/product", method = RequestMethod.PUT)
+	@RequestMapping(value = "/product", method = RequestMethod.PUT, consumes = "application/json")
 	public ResponseJson<Product> edit(@RequestBody Product product) {
 		if (null == product || null == product.getId() || null == product.getDemandType()
 				|| null == product.getExternalRackName() || null == product.getCluster() || null == product.getIpn()
@@ -73,23 +74,28 @@ public class ProductController {
 	}
 
 	@RequestMapping(value = "/product", method = RequestMethod.GET)
-	public ResponseJson<Page<Product>> page(ProductQuery product,
-			@RequestParam(value = "page", defaultValue = "0") int page,
-			@RequestParam(value = "size", defaultValue = "20") int size) {
+	public Object page(ProductQuery product,
+			@RequestParam(value = "page", defaultValue = "1") int page,
+			@RequestParam(value = "rows", defaultValue = "20") int rows) {
 		logger.info("product:{}", JSON.toJSONString(product));
-		// page = 0; //TODO:这就是坑货，没有打印sql的入参和返回数据。 还没测试翻页
-		Page<Product> person = productService.findByCriteria(page, size, product);
-		return ResponseJson.createResponse(person);
+		// page = 0; //TODO:这就是坑货，没有打印sql的入参和返回数据。
+		page = page - 1;
+		Page<Product> person = productService.findByCriteria(page, rows, product);
+		Map<String,Object> map = new HashMap<>();
+		map.put("total", person.getTotalElements());
+		map.put("rows", person.getContent());
+		return map;
 	}
 
-//	@RequestMapping(value = "/product/import", method = RequestMethod.POST)
-//	public ResponseJson<Map<Integer, String>> importStations(HttpServletRequest request, HttpServletResponse response) {
-//		Map<String, Object> fileData = ImportUtil.upload(request);
-//
-//		FileInputStream fis = (FileInputStream) fileData.get("fis");
-//		String fileName = (String) fileData.get("fileName");
-//		Map<Integer, String> errorMsg = productService.importProduct(fis, fileName);
-//		return ResponseJson.createResponse(errorMsg);
-//	}
+	@RequestMapping(value = "/product/import", method = RequestMethod.POST)
+	public ResponseJson<Map<Integer, String>> importStations(HttpServletRequest request, HttpServletResponse response) {
+		Map<String, Object> fileData = ImportUtil.upload(request);
+
+		FileInputStream fis = (FileInputStream) fileData.get("fis");
+		String fileName = (String) fileData.get("fileName");
+		Map<Integer, String> errorMsg = productService.importProduct(fis, fileName);
+		return ResponseJson.createResponse(errorMsg);
+	}
+	
 
 }

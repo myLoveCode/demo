@@ -26,6 +26,19 @@ public class DateUtil {
 		}
 		return null;
 	}
+	
+	/**
+	 * 日期格式化
+	 * 
+	 * @param date
+	 * @return
+	 */
+	public static String getDateFormat(Date date) {
+		if(null == date) {
+			return null;
+		}
+		return new SimpleDateFormat("dd/MM/yyyy").format(date);
+	}
 
 	public static Date getFirstDayOfWeek(String dateStr) {
 		Calendar cal = Calendar.getInstance();
