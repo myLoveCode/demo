@@ -112,28 +112,15 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	@Transactional(readOnly = false)
 	public Map<Integer,String> importProduct(FileInputStream fis, String fileName) {
-<<<<<<< .mine
 		logger.info("导入Excel");
         StopWatch clock = new StopWatch();
-=======
-		StopWatch clock = new StopWatch();  
-		clock.start("excelTableFieldMappings");
->>>>>>> .theirs
-		StopWatch clock = new StopWatch();  
-		clock.start("excelTableFieldMappings");		// TODO:cq...0.查询该客户的所有Excel自定义列头对应的表字段
+        clock.start("excelTableFieldMappings");
+		// TODO:cq...0.查询该客户的所有Excel自定义列头对应的表字段
 		List<ExcelTableFieldMapping> excelTableFieldMappings = excelTableFieldMappingDao.findByCustomer(fileName);
-		clock.stop();<<<<<<< .mine
 		clock.stop();
 		
 		clock.start("parseExcelMappin");
-=======
-		clock.stop();
-
-
->>>>>>> .theirs
 		// ... List<ExcelTableFieldMapping> 2 map 传到 parseExcel方法中map
-		
-		clock.start("parseExcelMappin");
 		Map<String, String> parseExcelMappin = excelTableFieldMappings.stream()
 				.collect(Collectors.toMap(ExcelTableFieldMapping::getExcelTile, ExcelTableFieldMapping::getTableField));
 		clock.stop();
@@ -142,15 +129,8 @@ public class ProductServiceImpl implements ProductService {
 		Map<String, ExcelTableFieldMapping> validateExcelMapping = excelTableFieldMappings.stream()
 				.filter(e->e.getFieldNotNull())
 				.collect(Collectors.toMap(ExcelTableFieldMapping::getTableField, k->(k)));
-<<<<<<< .mine
 		clock.stop();
 		
-		clock.start("parseExcel");
-=======
-		clock.stop();
-
-
->>>>>>> .theirs
 		clock.start("parseExcel");
 		// 1.文件解析
 		List<Map<String, Object>> excelDataList = null;
@@ -167,13 +147,8 @@ public class ProductServiceImpl implements ProductService {
 		// 2.文件校验
 		// 哪些字段是不能为空 等
 		Map<Integer, String> excelErrorMsg = validateExcelCell(validateExcelMapping, excelDataList);
-<<<<<<< .mine
 		clock.stop();
 		
-=======
-		clock.stop();
-
->>>>>>> .theirs
 		if(excelErrorMsg.size()>0) {
 			return excelErrorMsg;
 		}
@@ -184,27 +159,16 @@ public class ProductServiceImpl implements ProductService {
 		List<Product> insertExcelDataList = handleExcelCell(excelDataList,fileName); //要插入数据库的数据
 		clock.stop();
 		
-<<<<<<< .mine
 		clock.start("DBoperration");
-=======
-		clock.start("DBoperation");
->>>>>>> .theirs
 		//4.老数据迁移到历史日志表，并批量插入新数据
         String customer = fileName; //一个文件对应一个customer，这里做简单模拟。文件名就是客户公司名称
         productDao.moveToProductHistory(customer);
         productDao.deleteByCustomer(customer);
         productDao.save(insertExcelDataList); //好假。。。竟然是一条一条的保存。
-<<<<<<< .mine
         clock.stop();
         logger.info("导入Excel任务全部执行结束");
         logger.info(clock.prettyPrint());
         logger.info("共耗费秒数={}" , clock.getTotalTimeSeconds());
-=======
-        clock.stop();
-        logger.info(clock.prettyPrint());
-
-
->>>>>>> .theirs
         
         return null;
 	}
