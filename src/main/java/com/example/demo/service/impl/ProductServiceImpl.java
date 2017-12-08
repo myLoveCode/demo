@@ -31,7 +31,7 @@ import com.alibaba.fastjson.JSON;
 import com.example.core.exception.BusinessException;
 import com.example.core.utils.BeanMapChangeUtil;
 import com.example.core.utils.DateUtil;
-import com.example.core.utils.ImportExcelUtil;
+import com.example.core.utils.ExcelUtil;
 import com.example.demo.dao.ExcelTableFieldMappingDao;
 import com.example.demo.dao.ProductDao;
 import com.example.demo.entity.ExcelTableFieldMapping;
@@ -51,40 +51,47 @@ public class ProductServiceImpl implements ProductService {
 
 	@Override
 	@Transactional(readOnly = false)
-	public Product save(Product product) {
+	public Product save(Product product) throws BusinessException {
 		logger.info("product:{}",JSON.toJSONString(product));
 		return productDao.save(product);
 	}
 
 	@Override
 	@Transactional(readOnly = false)
-	public void delete(Long id) {
+	public void delete(Long id) throws BusinessException {
+		Product findOne = productDao.findOne(id);
+		if(findOne == null) {
+			throw new BusinessException("不存在的数据");
+		}
 		productDao.delete(id);
 	}
 
 	@Override
-	@Transactional(readOnly = false)
-	public Product findOne(Long id) {
-		return productDao.findOne(id);
+	public Product findOne(Long id) throws BusinessException {
+		Product findOne = productDao.findOne(id);
+		if(findOne == null) {
+			throw new BusinessException("不存在的数据");
+		}
+		return findOne;
 	}
 
 	@Override
-	public Page<Product> findByCriteria(int page, int size, ProductQuery conditon) {
-		logger.info("page:{},size:{},ProductQuery:{}", page, size, JSON.toJSONString(conditon));
-		Pageable pageable = new PageRequest(page, size, Sort.Direction.ASC, "id");
+	public Page<Product> findByCriteria(int page, int size, ProductQuery conditon) throws BusinessException {
+		logger.info("page:{},size:{},ProductQuery:{}", page-1, size, JSON.toJSONString(conditon));
+		Pageable pageable = new PageRequest(page-1, size, Sort.Direction.DESC, "id");
 		Page<Product> bookPage = productDao.findAll(new Specification<Product>() {
 			@Override
 			public Predicate toPredicate(Root<Product> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) {
 				List<Predicate> list = new ArrayList<Predicate>();
 				if (null != conditon.getCustomer() && !"".equals(conditon.getCustomer())) {
-					list.add(criteriaBuilder.equal(root.get("customer").as(String.class), conditon.getCustomer())); // TODO:如果是模糊查询呢？
+					list.add(criteriaBuilder.like(root.get("customer").as(String.class), "%"+conditon.getCustomer()+"%" )); // TODO:如果是模糊查询呢？
 				}
 				if (null != conditon.getDemandType() && !"".equals(conditon.getDemandType())) {
-					list.add(criteriaBuilder.equal(root.get("demandType").as(String.class), conditon.getDemandType()));
+					list.add(criteriaBuilder.like(root.get("demandType").as(String.class), "%"+conditon.getDemandType()+"%"  ));
 				}
 				if (null != conditon.getExternalRackName() && !"".equals(conditon.getExternalRackName())) {
-					list.add(criteriaBuilder.equal(root.get("externalRackName").as(String.class),
-							conditon.getExternalRackName()));
+					list.add(criteriaBuilder.like(root.get("externalRackName").as(String.class),
+							"%"+conditon.getExternalRackName()+"%"  ));
 				}
 				Predicate[] p = new Predicate[list.size()];
 				return criteriaBuilder.and(list.toArray(p));
@@ -106,69 +113,72 @@ public class ProductServiceImpl implements ProductService {
 		return bookPage;
 	}
 
-	/* (non-Javadoc)
-	 * @see com.example.demo.service.ProductService#importProduct(java.io.FileInputStream, java.lang.String)
-	 */
 	@Override
 	@Transactional(readOnly = false)
-	public Map<Integer,String> importProduct(FileInputStream fis, String fileName) {
-		logger.info("导入Excel");
+	public List<Map<String, String>> importProduct(FileInputStream fis, String fileName) {
         StopWatch clock = new StopWatch();
-        clock.start("excelTableFieldMappings");
-		// TODO:cq...0.查询该客户的所有Excel自定义列头对应的表字段
+        clock.start("查询customer自定义的Excel列头");
+		//0.查询该客户的所有Excel自定义列头对应的表字段
 		List<ExcelTableFieldMapping> excelTableFieldMappings = excelTableFieldMappingDao.findByCustomer(fileName);
+		if(excelTableFieldMappings == null) {
+			throw new BusinessException("没找到该用户的数据，请联系管理员，添加Excel列头数据");
+		}
 		clock.stop();
 		
-		clock.start("parseExcelMappin");
 		// ... List<ExcelTableFieldMapping> 2 map 传到 parseExcel方法中map
+		clock.start("得到Excel列头和字段对应关系，用于后续解析Excel");
 		Map<String, String> parseExcelMappin = excelTableFieldMappings.stream()
 				.collect(Collectors.toMap(ExcelTableFieldMapping::getExcelTile, ExcelTableFieldMapping::getTableField));
 		clock.stop();
 		
-		clock.start("validateExcelMapping");
+		//目前的校验规则只是进行非空校验
+		clock.start("得到数据库中配置了的Excel校验规则");
 		Map<String, ExcelTableFieldMapping> validateExcelMapping = excelTableFieldMappings.stream()
 				.filter(e->e.getFieldNotNull())
 				.collect(Collectors.toMap(ExcelTableFieldMapping::getTableField, k->(k)));
 		clock.stop();
 		
-		clock.start("parseExcel");
+		clock.start("解析Excel");
 		// 1.文件解析
 		List<Map<String, Object>> excelDataList = null;
 		try {
-			excelDataList = ImportExcelUtil.parseExcel(fis, fileName, parseExcelMappin);
+			excelDataList = ExcelUtil.parseExcel(fis, fileName, parseExcelMappin);
 		} catch (Exception e) {
-			logger.error("文件上传成功，但是文件解析失败");
 			logger.error(e.getMessage(), e);
+			throw new BusinessException("文件解析失败");
+		}
+		if(excelDataList == null) {
 			throw new BusinessException("文件解析失败");
 		}
 		clock.stop();
 		
-		clock.start("validateExcelCell");
+		clock.start("校验Excle");
 		// 2.文件校验
 		// 哪些字段是不能为空 等
-		Map<Integer, String> excelErrorMsg = validateExcelCell(validateExcelMapping, excelDataList);
+		List<Map<String, String>> excelErrorMsg = validateExcelCell(validateExcelMapping, excelDataList);
 		clock.stop();
 		
-		if(excelErrorMsg.size()>0) {
+		if(excelErrorMsg!=null && excelErrorMsg.size()>0) {
 			return excelErrorMsg;
 		}
 		
-		clock.start("handleExcelCell");
+		clock.start("Excel数据处理");
 		//3.merge 相同类型产品，对数量进行相加
-		//TODO：cq...3.1 保存文件时得判断文件是否已经存在？如果存在，那么是否会进行覆盖呢？
+		//3.1 保存文件时得判断文件是否已经存在？如果存在，那么是否会进行覆盖呢？
 		List<Product> insertExcelDataList = handleExcelCell(excelDataList,fileName); //要插入数据库的数据
 		clock.stop();
 		
-		clock.start("DBoperration");
+		clock.start("Excel处理后的数据入库");
 		//4.老数据迁移到历史日志表，并批量插入新数据
         String customer = fileName; //一个文件对应一个customer，这里做简单模拟。文件名就是客户公司名称
         productDao.moveToProductHistory(customer);
         productDao.deleteByCustomer(customer);
         productDao.save(insertExcelDataList); //好假。。。竟然是一条一条的保存。
         clock.stop();
-        logger.info("导入Excel任务全部执行结束");
-        logger.info(clock.prettyPrint());
-        logger.info("共耗费秒数={}" , clock.getTotalTimeSeconds());
+//        logger.info(clock.prettyPrint());
+//        logger.info("共耗费秒数={}" , clock.getTotalTimeSeconds());
+        System.err.println(clock.prettyPrint());
+        System.err.println("共耗费秒数"+clock.getTotalTimeSeconds());
         
         return null;
 	}
@@ -182,6 +192,8 @@ public class ProductServiceImpl implements ProductService {
 	private List<Product> handleExcelCell(List<Map<String, Object>> excelDataList, String customer) {
 		Timestamp uploadTime = new Timestamp(System.currentTimeMillis());
 		List<Product> insertExcelDataList = new ArrayList<>(); //要插入数据库的数据
+		Map<String,Integer> map = new HashMap<>();
+		
         for (int i = 0; i < excelDataList.size(); i++) {  
         	Map<String, Object> excelData = excelDataList.get(i);  
         	Date dateFormat = DateUtil.getDateFormat((String)excelData.get("needByDate"));
@@ -200,44 +212,66 @@ public class ProductServiceImpl implements ProductService {
 					map2Bean.setCustomer(customer);
 					map2Bean.setUploadTime(uploadTime);
 					insertExcelDataList.add(map2Bean);
+					
+					map.put(unique, insertExcelDataList.size()-1);
+					
 				} catch (Exception e1) {
 					logger.error(e1.getMessage(),e1);
 				}
         	}else {
-        		int count=0;
-        		for(int j=0; j<size; j++) {
-            		Product insertExcelData = insertExcelDataList.get(j); 
-            		String distinct = insertExcelData.getDemandType()+insertExcelData.getExternalRackName()
-            						+ insertExcelData.getCluster()+ DateUtil.getDateFormat( insertExcelData.getNeedByDate() );
-            		
-            		if(!unique.equals(distinct)) {
-    					try {
-    						Product map2Bean = BeanMapChangeUtil.toBean(excelData, Product.class);
-    						String needByDate = (String)excelData.get("needByDate");
-    						map2Bean.setSunday(DateUtil.getFirstDayOfWeek(needByDate) );
-    						
-    						map2Bean.setCustomer(customer);
-    						map2Bean.setUploadTime(uploadTime);
-    						count++;
-    						if(count == size) {
-    							insertExcelDataList.add(map2Bean);
-    						}
-    					} catch (Exception e1) {
-    						logger.error(e1.getMessage(),e1);
-    					}
-            		}else {
-            			Integer insertQuantity = insertExcelData.getQuantity();
-            			insertExcelDataList.get(j).setQuantity(insertQuantity+quantity);
-            		}
-            	}
+        		Integer index = map.get(unique);
+				if(null == index) {
+        			try {
+						Product map2Bean = BeanMapChangeUtil.toBean(excelData, Product.class);
+						String needByDate = (String)excelData.get("needByDate");
+						map2Bean.setSunday(DateUtil.getFirstDayOfWeek(needByDate) );
+						
+						map2Bean.setCustomer(customer);
+						map2Bean.setUploadTime(uploadTime);
+						insertExcelDataList.add(map2Bean);
+						map.put(unique, insertExcelDataList.size()-1);
+					} catch (Exception e1) {
+						logger.error(e1.getMessage(),e1);
+					}
+        		}else {
+        			Product insertExcelData = insertExcelDataList.get(index); 
+        			insertExcelDataList.get(index).setQuantity(insertExcelData.getQuantity()+quantity);
+        		}
+        		
+//        		int count=0;
+//        		for(int j=0; j<size; j++) {
+//            		Product insertExcelData = insertExcelDataList.get(j); 
+//            		String distinct = insertExcelData.getDemandType()+insertExcelData.getExternalRackName()
+//            						+ insertExcelData.getCluster()+ DateUtil.getDateFormat( insertExcelData.getNeedByDate() );
+//            		
+//            		if(!unique.equals(distinct)) {
+//    					try {
+//    						Product map2Bean = BeanMapChangeUtil.toBean(excelData, Product.class);
+//    						String needByDate = (String)excelData.get("needByDate");
+//    						map2Bean.setSunday(DateUtil.getFirstDayOfWeek(needByDate) );
+//    						
+//    						map2Bean.setCustomer(customer);
+//    						map2Bean.setUploadTime(uploadTime);
+//    						count++;
+//    						if(count == size) {
+//    							insertExcelDataList.add(map2Bean);
+//    						}
+//    					} catch (Exception e1) {
+//    						logger.error(e1.getMessage(),e1);
+//    					}
+//            		}else {
+//            			Integer insertQuantity = insertExcelData.getQuantity();
+//            			insertExcelDataList.get(j).setQuantity(insertQuantity+quantity);
+//            		}
+//            	}
         	}
         }
 		return insertExcelDataList;
 	}
 
-	private Map<Integer, String> validateExcelCell(Map<String, ExcelTableFieldMapping> validateExcelMapping,
+	private List<Map<String, String>> validateExcelCell(Map<String, ExcelTableFieldMapping> validateExcelMapping,
 			List<Map<String, Object>> excelDataList) {
-		Map<Integer,String> excelErrorMsg = new HashMap<>();
+		List<Map<String,String>> errorMsg = new ArrayList<>();
 //		excelData.forEach(item -> {
 //			if (validateExcelMapping.get("demandType").getFieldNotNull() && StringUtils.isEmpty(item.get("demandType"))) {
 //				String warningMsg = "第"+ 1 +"行，" + validateExcelMapping.get("demandType").getExcelTile() +"不能为空";
@@ -246,7 +280,7 @@ public class ProductServiceImpl implements ProductService {
 //		});
 		
 		for(int i=0; i< excelDataList.size(); i++) {
-			String lineWarningMsg = null;
+			String lineWarningMsg = "";
 			if (validateExcelMapping.get("demandType").getFieldNotNull() && StringUtils.isEmpty(excelDataList.get(i).get("demandType"))) {
 				lineWarningMsg += validateExcelMapping.get("demandType").getExcelTile() +"不能为空，";
 			}
@@ -265,11 +299,14 @@ public class ProductServiceImpl implements ProductService {
 			if (validateExcelMapping.get("quantity").getFieldNotNull() && StringUtils.isEmpty(excelDataList.get(i).get("quantity"))) {
 				lineWarningMsg += validateExcelMapping.get("quantity").getExcelTile() +"不能为空，";
 			}
-			if(null != lineWarningMsg) {
-				excelErrorMsg.put(i+i, lineWarningMsg);
+			if(!"".equals(lineWarningMsg)) {
+				Map<String,String> lineErrorMap = new HashMap<>();
+				lineErrorMap.put("lineNum", i+2+"");
+				lineErrorMap.put("lineErrorMsg", lineWarningMsg);  //i+1 为行号，还有一个列头占一行所以还得再加1 ,+2
+				errorMsg.add(lineErrorMap);
 			}
 		}
-		return excelErrorMsg;
+		return errorMsg;
 	}
 
 }

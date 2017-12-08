@@ -34,25 +34,57 @@
 	
 </head>
 <body>
-	<h2>Basic CRUD Application</h2>
+	<h2>新家伙：SpringBoot + Spring Data JPA + Git + Idea（后续切换IDE）</h2>
 	<div class="demo-info" style="margin-bottom:10px">
 		<div class="demo-tip icon-tip">&nbsp;</div>
-		<div>Click the buttons on datagrid toolbar to do crud actions.</div>
+		<div>
+			1: JDK8 
+			2：Spring Boot 
+			3：Spring Data JPA 
+			4：Git 
+		</div>
 	</div>
-	
+	<table>
+		<tr>
+			<td>customer:</td>
+			<td><input id="customer" name="customer"/></td>
+			<td>demandType:</td>
+			<td><input id="demandType" name="demandType"/></td>
+			<td>model:</td>
+			<td><input id="model" name="model"/></td>
+			<td>
+				<a href="#" class="easyui-linkbutton" iconCls="icon-search" plain="false" onclick="doSearch()">查询</a>
+			</td>
+	</table>
 	<table id="dg" title="ExcleData" class="easyui-datagrid" >
 	</table>
 	<div id="toolbar">
-		<a href="#" class="easyui-linkbutton" iconCls="icon-add" plain="true" onclick="newUser()">新增</a>
-		<a href="#" class="easyui-linkbutton" iconCls="icon-edit" plain="true" onclick="editUser()">修改</a>
-		<a href="#" class="easyui-linkbutton" iconCls="icon-remove" plain="true" onclick="removeUser()">删除</a>
-		<input id="userInfoData" name="data" class="easyui-filebox" data-options="buttonText:'选择',prompt:'请选择文件...'"/>
+		<a href="#" style="float:left" class="easyui-linkbutton" iconCls="icon-add" plain="true" onclick="newUser()">新增</a>
+		<a href="#" style="float:left" class="easyui-linkbutton" iconCls="icon-edit" plain="true" onclick="editUser()">修改</a>
+		<a href="#" style="float:left" class="easyui-linkbutton" iconCls="icon-remove" plain="true" onclick="removeUser()">删除</a>
+		
+		<div id="#DivUp" style="float:left;margin-left:10px;">
+                <div style="float:left">
+                   <!--  
+                   <label for="file">
+                        <h5> 文件上传:</h5>
+                    </label> 
+                    -->
+                    <input type="file" name="fileToUpload" id="fileToUpload" multiple="multiple" onchange="fileSelected();" />
+                    <a id="uploadFile" style=" display:none" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-save'" onclick="uploadFile()">上传并导入&nbsp;&nbsp;</a>
+                </div>
+        
+                <div id="fileName" style="display:none;padding: 10px"></div>
+                <div id="fileSize" style="display:none;padding: 10px"></div>
+                <div id="fileType" style="display:none;padding: 10px"></div> 
+                <div id="progressNumber" class="easyui-progressbar" style="width: 300px;"></div>
+        </div>
 	</div>
 	
 	<div id="dlg" class="easyui-dialog" style="width:500px;height:600px;padding:10px 20px" closed="true" buttons="#dlg-buttons">
 		<div class="ftitle">User Information</div>
 		<form id="fm" method="post" novalidate>
-			<input name="id" type="text" />
+			<input name="id" type="hidden" />
 			<div class="fitem">
 				<label>需求类型:</label>
 				<input name="demandType" class="easyui-validatebox" required="true">
@@ -160,6 +192,9 @@ function myparser(str){
 	var url;
 	
 	$(function(){
+		$("#progressNumber").hide();
+		
+		//列表初始化
 		$("#dg").datagrid({
 			url:baseUrl + "/product",
 			method:'GET',
@@ -214,7 +249,13 @@ function myparser(str){
 	                        }	
 						},
 						{field:'quantity',title:'数量',align:'center'},
-						{field:'location',title:'location',align:'center'},
+						{field:'location',title:'location',align:'center'
+							,formatter : function(value){
+								if(!value){
+	                       			return Math.random().toString(36).substr(2);
+	                       		}
+	                        }		
+						},
 						{field:'vendor',title:'vendor',align:'center'},
 						{field:'shippingRegion',title:'shippingRegion',align:'center'},
 						{field:'cluster1',title:'cluster1',align:'center'},
@@ -257,24 +298,29 @@ function myparser(str){
 			]]
 			
 		});
-		
-		
 	});
 	
-	function queryDataGrid(){
-		url = baseUrl + "/product";
+	function doSearch(){
 		var customer=$("#customer").val();
 		var demandType=$("#demandType").val();
 		var model=$("#model").val();
 		
-		var data = {"customer": customer, "demandType":demandType, "externalRackName":model};
-		$.get(url, data, function(res){
+		$('#dg').datagrid('load',{
+			customer: customer,
+			demandType: demandType,
+			externalRackName: model
+		});
+		
+		/* var data = {"customer": customer, "demandType":demandType, "externalRackName":model};
+		
+		$.get(baseUrl + "/product", data, function(res){
 			var total = res.totalElements;
             var resdata = res.data.content;
 			
             var datasource = { total: total, rows: resdata };
-            $("#dg").datagrid('loadData', datasource);
-		});
+            datasource = JSON.parse(datasource);
+            $("#dg").datagrid('loadData', datasource);//TODO:cq...
+		}); */
 		
 	}
 	
@@ -289,23 +335,6 @@ function myparser(str){
 		if (row){
 			$('#dlg').dialog('open').dialog('setTitle','修改');
 			$('#fm').form('load',row);//填充数据
-			/* $.get( baseUrl + "/product/" + row.id , function(res){
-				$("input[name='demandType']").val(res.demandType);
-				$("input[name='externalRackName']").val(res.externalRackName);
-				$("input[name='cluster']").val(res.cluster);
-				$("input[name='ipn']").val(res.ipn);
-				$("input[name='needByDate']").val(res.needByDate);
-				$("input[name='quantity']").val(res.quantity);
-				$("input[name='vendor']").val(res.vendor);
-				$("input[name='shippingRegion']").val(res.shippingRegion);
-				$("input[name='cluster1']").val(res.cluster1);
-				$("input[name='deliveryWindowStart']").val(res.deliveryWindowStart);
-				$("input[name='needByDateOld']").val(res.needByDateOld);
-				$("input[name='dateStamp']").val(res.dateStamp);
-				$("input[name='testRack']").val(res.testRack);
-				$("input[name='region']").val(res.region);
-				$("input[name='type']").val(res.type);
-			}); */
 		}
 	}
 	
@@ -361,5 +390,144 @@ function myparser(str){
 			});
 		}
 	}
+</script>
+<script language="javascript" type="text/javascript">
+    function fileSelected() {
+        var file = document.getElementById('fileToUpload').files[0];
+        var fileName = file.name;
+        var file_typename = fileName.substring(fileName.lastIndexOf('.'), fileName.length);
+    
+        if (file_typename == '.xls' || file_typename == '.xlsx') {//这里限定上传文件文件类型
+            if (file) {
+                $("#uploadFile").show();
+                var fileSize = 0;
+                if (file.size > 1024 * 1024){
+                    fileSize = (Math.round(file.size * 100 / (1024 * 1024)) / 100).toString() + 'MB';
+                }else{
+                    fileSize = (Math.round(file.size * 100 / 1024) / 100).toString() + 'KB';
+                }
+                document.getElementById('fileName').innerHTML = '文件名: ' + file.name;
+                document.getElementById('fileSize').innerHTML = '大小: ' + fileSize;
+                document.getElementById('fileType').innerHTML = '类型: ' + file.type;
+                
+                
+            }
+        }
+        else {
+            $("#uploadFile").hide();
+            
+            var msg = "<span style='color:Red'>错误提示:上传文件应该是.xls或者.xlsx后缀而不应该是" + file_typename + ",请重新选择文件</span>";
+            document.getElementById('fileName').innerHTML = msg;
+            //$("#fileName").show();
+            $.messager.show({	
+            	showType: null,
+				style: {},
+				title: 'Error',
+				msg: msg
+			});
+            document.getElementById('fileSize').innerHTML ="";
+            document.getElementById('fileType').innerHTML ="";
+        }
+    }
+
+    function uploadFile() {
+        var fd = new FormData();
+        fd.append("fileToUpload", document.getElementById('fileToUpload').files[0]);
+        var xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener("progress", uploadProgress, false);
+        xhr.addEventListener("load", uploadComplete, false);
+        xhr.addEventListener("error", uploadFailed, false);
+        xhr.addEventListener("abort", uploadCanceled, false);
+        xhr.open("POST", "/api/product/import");
+        xhr.send(fd);
+        
+        $("#progressNumber").progressbar("setValue", 0);
+        $("#progressNumber").show();
+    }
+
+    function uploadProgress(evt) {
+        if (evt.lengthComputable) {
+            //var percentComplete = Math.round(evt.loaded * 100 / evt.total);
+            //$('#progressNumber').progressbar('setValue', percentComplete);
+        	startBar();
+        }
+        else {
+            document.getElementById('progressNumber').innerHTML = '无法计算';
+        }
+    }
+
+    function uploadComplete(evt) {
+        /* 服务器返回数据*/
+        var message = evt.target.responseText;
+        console.log("uploadComplete",message);
+        message = JSON.parse(message);
+        if(message.data!=null){
+        	var error = "";
+        	for(var i=0;i<message.data.length;i++){
+        		error = error + "第"+message.data[i].lineNum+"行，"+message.data[i].lineErrorMsg + "<br/>";
+        	}
+        	$.messager.show({	// show error message
+				title: '错误提示',
+				width: 500,
+				height: '100%',
+				showType: null,
+				style: {
+					left:'',  
+			        right:0,  
+			        top:document.body.scrollTop+document.documentElement.scrollTop,  
+			        bottom:''
+				},
+				timeout: 0,
+				msg: error
+			});
+        }
+        else{
+        	$('#progressNumber').progressbar('setValue', 100);
+        	alert("导入成功");
+        	
+        	doSearch();//刷新数据
+        	$('#dg').datagrid('reload');	// reload the user data
+        	$("#uploadFile").hide();
+        	$("#progressNumber").fadeOut();
+        	$("#fileToUpload").val('');
+        }
+    }
+
+    function uploadFailed(evt) {
+        alert("上传出错.");
+        console.log("uploadFailed",evt);
+    }
+
+    function uploadCanceled(evt) {
+        alert("上传已由用户或浏览器取消删除连接.");
+        console.log("uploadCanceled",evt);
+    }
+</script>
+
+<script>
+    var t = 0, time_id = null;
+    $("#progressNumber").progressbar({
+        //width:300,
+        //height:25,
+        value:0,
+        onChange:function(newValue, oldValue) { 
+            if (newValue >= 90) {
+                //如果进度到了100%，清除定时器，结束过程
+                window.clearInterval(time_id);
+                time_id = null;
+            }
+        }
+    });
+
+    function addProgressBar() {
+        // 设置进度条显示的数值
+        t = t + Math.floor(Math.random() * 10) + 5;
+        $("#progressNumber").progressbar("setValue", t);
+    }
+
+    function startBar() {
+        // 建立定时器，每隔1秒调用addProgressBar方法
+        time_id = window.setInterval(addProgressBar, 1000);
+    }
 </script>
 </html>

@@ -16,7 +16,7 @@ public class DateUtil {
 	 * @return
 	 */
 	public static Date getDateFormat(String date) {
-		if(null == date || "null".equals(date.trim())) {
+		if(null == date || "".equals(date) || "null".equals(date.trim()) ) {
 			return null;
 		}
 		try {
