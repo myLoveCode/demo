@@ -33,18 +33,19 @@ public class DemoApplication {
         return factory.createMultipartConfig();
     }
     
-    
-	@Bean
-	public EmbeddedServletContainerFactory servletContainer() {
-		TomcatEmbeddedServletContainerFactory factory = new TomcatEmbeddedServletContainerFactory();
-		TomcatContextCustomizer contextCustomizer = new TomcatContextCustomizer() {
-			@Override
-			public void customize(Context context) {
-				context.addWelcomeFile("index.jsp");
-				context.setWebappVersion("3.1");
-			}
-		};
-		factory.addContextCustomizers(contextCustomizer);
-		return factory;
-	}
+
+//  测试Intellij IDEA
+//	@Bean
+//	public EmbeddedServletContainerFactory servletContainer() {
+//		TomcatEmbeddedServletContainerFactory factory = new TomcatEmbeddedServletContainerFactory();
+//		TomcatContextCustomizer contextCustomizer = new TomcatContextCustomizer() {
+//			@Override
+//			public void customize(Context context) {
+//				context.addWelcomeFile("index.jsp");
+//				context.setWebappVersion("3.1");
+//			}
+//		};
+//		factory.addContextCustomizers(contextCustomizer);
+//		return factory;
+//	}
 }
